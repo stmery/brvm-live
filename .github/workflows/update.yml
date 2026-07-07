@@ -2,7 +2,7 @@ name: Mise a jour des donnees BRVM
 
 on:
   schedule:
-    - cron: "0 19 * * 1-5"
+    - cron: "0 6,12,18 * * 1-6"
   workflow_dispatch:
     inputs:
       backfill:
