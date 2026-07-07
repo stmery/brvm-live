@@ -1,0 +1,57 @@
+name: Veilleur (fraicheur des donnees)
+
+# Vérifie une fois par jour que le robot ingère bien de nouvelles séances.
+# Si aucune séance n'est apparue depuis plusieurs jours ouvrés (parseur cassé,
+# format du bulletin changé, téléchargement bloqué…), la tâche ÉCHOUE
+# volontairement → GitHub envoie automatiquement un email d'alerte au
+# propriétaire du dépôt. Aucune configuration requise.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"     # chaque jour ouvré, 9h00 UTC
+  workflow_dispatch:            # + déclenchement manuel pour tester
+
+jobs:
+  veilleur:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Contrôle de fraîcheur
+        run: |
+          python - <<'EOF'
+          import json, os, sys, datetime as dt
+
+          SEUIL = 4   # nombre de jours ouvrés sans nouvelle séance avant alerte
+
+          if not os.path.exists("data.json"):
+              print("::error::data.json est absent du dépôt.")
+              sys.exit(1)
+
+          with open("data.json", encoding="utf-8") as f:
+              data = json.load(f)
+          if not data:
+              print("::error::data.json est vide — aucune séance.")
+              sys.exit(1)
+
+          last = max(dt.date.fromisoformat(k) for k in data)
+          today = dt.date.today()
+          # jours ouvrés (lun-ven) écoulés depuis la dernière séance
+          gap = sum(1 for i in range((today - last).days)
+                    if (last + dt.timedelta(days=i + 1)).weekday() < 5)
+
+          print(f"Dernière séance en base : {last}")
+          print(f"Jours ouvrés écoulés depuis : {gap}")
+          print(f"Total de séances : {len(data)}")
+
+          if gap > SEUIL:
+              print(f"::error::ALERTE — aucune nouvelle séance depuis {gap} jours "
+                    f"ouvrés (seuil {SEUIL}). Le robot ne parvient plus à ingérer : "
+                    f"format du bulletin peut-être modifié, ou téléchargement bloqué. "
+                    f"À vérifier / recalibrer.")
+              sys.exit(1)
+
+          print("Fraîcheur OK.")
+          EOF
