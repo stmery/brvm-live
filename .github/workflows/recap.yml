@@ -1,0 +1,32 @@
+name: Recap hebdomadaire
+
+on:
+  schedule:
+    - cron: "0 8 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  recap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependances image
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2 fonts-liberation
+          pip install cairosvg
+      - name: Generer le recap
+        run: python build_recap.py
+      - name: Publier l'image
+        run: |
+          git config user.name "zieclair-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add recaps
+          git commit -m "Recap hebdo" || echo "Rien a committer."
+          git push
