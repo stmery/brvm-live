@@ -134,6 +134,7 @@
   <div class="disc">
     Données : Bulletins Officiels de la Cote de la BRVM. Le score est un indicateur d'information
     à règles transparentes — il ne constitue pas un conseil en investissement personnalisé.
+    <br>Ce site utilise Cloudflare Web Analytics et Microsoft Clarity pour améliorer l'expérience.
   </div>
 </div>
 
@@ -279,5 +280,7 @@ document.getElementById('search').oninput=renderList;
 document.getElementById('list').innerHTML='<div class="disc">Chargement des données…</div>';
 fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{DATA=d;init();}).catch(()=>{document.getElementById('list').innerHTML='<div class="disc">Données momentanément indisponibles.</div>';});
 </script>
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "6fdd3100457f4181a33f090633a371a0"}'></script><!-- End Cloudflare Web Analytics -->
+<!-- Microsoft Clarity --><script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","xjb5kaths9");</script><!-- End Microsoft Clarity -->
 </body>
 </html>
