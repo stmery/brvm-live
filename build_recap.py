@@ -124,7 +124,8 @@ def build():
         return
     end = days[-1]
     end_d = dt.date.fromisoformat(end)
-    window = [d for d in days if (end_d - dt.date.fromisoformat(d)).days <= 7]
+    lundi = end_d - dt.timedelta(days=end_d.weekday())
+    window = [d for d in days if lundi <= dt.date.fromisoformat(d) <= end_d]
     if len(window) < 2:
         window = days[-2:]
     start = window[0]
