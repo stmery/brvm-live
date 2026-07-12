@@ -109,10 +109,10 @@ def rubric_rendement(ql, window, data, ref):
 def rubric_volume(ql, window, data, ref):
     vol = {s: sum(x['volume'] or 0 for d in window for x in data[d]['quotes'] if x['symbol'] == s) for s in ql}
     s = max(vol, key=vol.get)
-    return ("Valeur la plus échangée", f"{clean(s, ql[s]['name'])} ({s})", f"{f0(vol[s])} titres")
+    return ("Valeur la plus échangée de la semaine", f"{clean(s, ql[s]['name'])} ({s})", f"{f0(vol[s])} titres")
 
 
-RUBRICS = [rubric_dividende, rubric_rendement, rubric_volume]
+RUBRICS = [rubric_volume]  # une seule rubrique : la valeur la plus echangee de la semaine
 
 
 def build():
