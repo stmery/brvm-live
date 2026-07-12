@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Ziéclair — La BRVM, en clair</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0f14">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ziéclair">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
@@ -53,6 +58,8 @@
   .row .sym{font-weight:700;font-size:14.5px}
   .row .nm{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .rt{text-align:right;flex:0 0 auto}
+  .row .favbtn{flex:0 0 30px;text-align:center;font-size:21px;line-height:1;color:var(--muted);cursor:pointer;margin-left:2px}
+  .row .favbtn.on{color:var(--accent)}
   .row .px{font-weight:700;font-variant-numeric:tabular-nums;font-size:14.5px}
   .row .chg{font-size:12px;font-variant-numeric:tabular-nums}
   .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;font-size:10.5px;margin-top:3px}
@@ -175,26 +182,38 @@ function sparkline(h){
 
 // Indices
 function renderIdx(){
-  const S=DATA[latest()].summary.indices;
+  const ds=dates(), last=ds[ds.length-1], prev=ds.length>1?ds[ds.length-2]:null;
+  const S=DATA[last].summary.indices||{}, P=prev?(DATA[prev].summary.indices||{}):{};
+  const dd=last.slice(8)+'/'+last.slice(5,7);
   const def=[['composite','Composite'],['brvm30','BRVM 30'],['prestige','Prestige']];
   document.getElementById('idxrow').innerHTML=def.map(([k,l])=>{
-    const v=S[k];return `<div class="idxpill"><div class="k">${l}</div><div class="v">${v==null?'—':f2(v)}</div>
-      <div class="c flat">au ${latest().slice(8)}/${latest().slice(5,7)}</div></div>`;}).join('');
+    const v=S[k], pv=P[k];
+    const chg=(v!=null&&pv!=null&&pv)?((v-pv)/pv*100):null;
+    const line=chg==null?`<span class="flat">au ${dd}</span>`
+      :`<span class="${cls(chg)}">${sgn(chg)}</span> <span class="flat" style="opacity:.75">au ${dd}</span>`;
+    return `<div class="idxpill"><div class="k">${l}</div><div class="v">${v==null?'—':f2(v)}</div><div class="c">${line}</div></div>`;
+  }).join('');
 }
+// Favoris (mémorisés dans le navigateur)
+let favOnly=false;
+let FAV=new Set((()=>{try{return JSON.parse(localStorage.getItem('zieclair_fav')||'[]')}catch(e){return[]}})());
+function toggleFav(sym){FAV.has(sym)?FAV.delete(sym):FAV.add(sym);localStorage.setItem('zieclair_fav',JSON.stringify([...FAV]));renderChips();renderList();}
 // Chips
 let fsec="";
 function renderChips(){
   const secs=[...new Set(quotes().map(q=>q.sector).filter(Boolean))].sort();
   const all=[["","Tous"],...secs.map(s=>[s,s])];
-  document.getElementById('chips').innerHTML=all.map(([v,l])=>`<div class="chip ${v===fsec?'on':''}" data-s="${v}">${l}</div>`).join('');
-  document.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{fsec=c.dataset.s;renderChips();renderList();});
+  const favChip=`<div class="chip ${favOnly?'on':''}" data-fav="1">★ Favoris${FAV.size?' ('+FAV.size+')':''}</div>`;
+  document.getElementById('chips').innerHTML=favChip+all.map(([v,l])=>`<div class="chip ${v===fsec?'on':''}" data-s="${v}">${l}</div>`).join('');
+  document.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{if(c.dataset.fav){favOnly=!favOnly;}else{fsec=c.dataset.s;}renderChips();renderList();});
 }
 // List
 function renderList(){
   const q=document.getElementById('search').value.toLowerCase();
-  let rows=quotes().filter(r=>(r.symbol.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))&&(!fsec||r.sector===fsec));
+  let rows=quotes().filter(r=>(r.symbol.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))&&(!fsec||r.sector===fsec)&&(!favOnly||FAV.has(r.symbol)));
   rows.sort((a,b)=>(b.value_fcfa||0)-(a.value_fcfa||0));
   document.getElementById('marketMeta').textContent=rows.length+' valeurs';
+  if(favOnly && !rows.length){document.getElementById('list').innerHTML='<div class="disc" style="padding:34px 20px">Aucun favori pour l\'instant.<br>Appuie sur ☆ sur une valeur pour l\'ajouter.</div>';return;}
   document.getElementById('list').innerHTML=rows.map(r=>{
     const sc=score(r);
     return `<div class="row" data-sym="${r.symbol}">
@@ -204,15 +223,17 @@ function renderList(){
         <div class="px">${fmt(r.close)}</div>
         <div class="chg ${cls(r.var_day_pct)}">${sgn(r.var_day_pct)}</div>
         <span class="badge ${sc.cls}">${sc.label==='—'?'—':sc.label+' '+sc.t}</span>
-      </div></div>`;}).join('');
+      </div>
+      <div class="favbtn ${FAV.has(r.symbol)?'on':''}" data-fav="${r.symbol}">${FAV.has(r.symbol)?'★':'☆'}</div>
+      </div>`;}).join('');
   document.querySelectorAll('#list .row').forEach(el=>el.onclick=()=>openDetail(el.dataset.sym));
+  document.querySelectorAll('#list .favbtn').forEach(el=>el.onclick=(e)=>{e.stopPropagation();toggleFav(el.dataset.fav);});
 }
 
 // Detail
 let chart=null,curRange='Max';
 function openDetail(sym){
   const h=history(sym),q=h[h.length-1],sc=score(q);
-  const nextDiv=q.div_date?(()=>{let d=new Date(q.div_date);d.setUTCFullYear(d.getUTCFullYear()+1);return d.toISOString().slice(0,10);})():null;
   const D=document.getElementById('detail');
   D.innerHTML=`
    <div class="dhead">
@@ -242,7 +263,6 @@ function openDetail(sym){
      <div class="dline"><span>Dernier dividende net</span><b>${q.div_amount_net==null?'—':fmt(q.div_amount_net)+' F'}</b></div>
      <div class="dline"><span>Date de détachement</span><b>${q.div_date||'—'}</b></div>
      <div class="dline"><span>Rendement net</span><b>${q.yield_net_pct==null?'—':f2(q.yield_net_pct)+' %'}</b></div>
-     <div class="dline"><span>Prochain (estimé)</span><b>${nextDiv||'—'}</b></div>
    </div>
 
    <div class="block">
@@ -282,5 +302,6 @@ fetch('data.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{DATA=d;init();}
 </script>
 <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "6fdd3100457f4181a33f090633a371a0"}'></script><!-- End Cloudflare Web Analytics -->
 <!-- Microsoft Clarity --><script type="text/javascript">(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","xjb5kaths9");</script><!-- End Microsoft Clarity -->
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body>
 </html>
