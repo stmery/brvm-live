@@ -110,6 +110,7 @@
   .dline{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
   .dline:last-child{border:none}
   .dline b{font-variant-numeric:tabular-nums}
+  .divnote{font-size:11.5px;color:var(--accent);margin-top:10px;line-height:1.4}
   /* Premium banner */
   .promo{margin:12px 18px;background:linear-gradient(135deg,rgba(242,129,29,.14),rgba(242,129,29,.04));border:1px solid var(--accent);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px}
   .promo .txt{flex:1}
@@ -179,6 +180,8 @@ const sgn=v=>v==null?"—":(v>0?'+':'')+f2(v)+' %';
 // Dates au format français JJ/MM/AAAA (les données sont stockées en ISO AAAA-MM-JJ)
 const fdate=s=>{if(!s)return"—";const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s;};
 const fdateShort=s=>{const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]:s;};
+// Mention quand le dernier détachement date de plus de 18 mois (pas de dividende récent)
+function divStale(dd){if(!dd)return"";const a=new Date(dd),b=new Date(latest());if(isNaN(a)||isNaN(b))return"";const months=(b-a)/2629800000;return months>18?`<div class="divnote">Aucun dividende détaché depuis ${a.getFullYear()}.</div>`:"";}
 const dates=()=>Object.keys(DATA).sort();
 const latest=()=>{const d=dates();return d[d.length-1];};
 const quotes=()=>DATA[latest()].quotes;
@@ -300,6 +303,7 @@ function openDetail(sym){
      <div class="dline"><span>Dernier dividende net</span><b>${q.div_amount_net==null?'—':fmt(q.div_amount_net)+' F'}</b></div>
      <div class="dline"><span>Date de détachement</span><b>${fdate(q.div_date)}</b></div>
      <div class="dline"><span>Rendement net</span><b>${q.yield_net_pct==null?'—':f2(q.yield_net_pct)+' %'}</b></div>
+     ${divStale(q.div_date)}
    </div>
 
    <div class="block">
