@@ -118,12 +118,26 @@
   .promo button{background:var(--accent);color:#0b0f14;border:none;border-radius:9px;padding:9px 14px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap}
   .disc{color:var(--muted);font-size:10.5px;line-height:1.5;padding:16px 20px;text-align:center}
   .demo{font-size:9.5px;color:var(--muted);background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:2px 9px}
+  /* V2 — réserver l'espace pour éviter les sauts (CLS) */
+  .idxrow{min-height:104px}
+  .idxpill{min-height:84px}
+  .chips{min-height:34px}
+  .row{min-height:86px}
+  .skpill{flex:0 0 auto;min-width:118px;height:84px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+  .skrow{height:86px;border-radius:13px;background:var(--card);border:1px solid var(--line);margin:0 6px 9px}
+  .sk{position:relative;overflow:hidden}
+  .sk::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.05),transparent);animation:shim 1.3s infinite}
+  @keyframes shim{to{transform:translateX(100%)}}
+  /* V2 — recherche collante + affordances de clic */
+  .searchbar{position:sticky;top:0;z-index:6;background:var(--bg)}
+  .brand{cursor:pointer}
+  .row .chev{flex:0 0 12px;text-align:center;color:var(--muted);font-size:20px;line-height:1;opacity:.55}
 </style>
 </head>
 <body>
 <div class="app" id="home">
   <div class="top">
-    <div class="brand">
+    <div class="brand" onclick="goHome()" title="Retour à l'accueil">
       <div class="logo"><svg width="32" height="32" viewBox="0 0 48 48" fill="none"><path d="M4 24 Q24 9 44 24 Q24 39 4 24 Z" stroke="#fff" stroke-width="2.6"/><line x1="24" y1="14" x2="24" y2="34" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><rect x="20.5" y="19.5" width="7" height="9" rx="1.6" fill="#fff"/></svg></div>
       <div>
         <div class="nm">Zié<span>clair</span></div>
@@ -132,16 +146,18 @@
     </div>
   </div>
 
-  <div class="idxrow" id="idxrow"></div>
+  <div class="idxrow" id="idxrow"><div class="skpill sk"></div><div class="skpill sk"></div><div class="skpill sk"></div></div>
 
-  <div class="search">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <input id="search" placeholder="Rechercher une action…">
+  <div class="searchbar">
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search" placeholder="Rechercher une action…">
+    </div>
   </div>
   <div class="chips" id="chips"></div>
 
   <div class="sec"><h2>Marché</h2><span class="n" id="marketMeta"></span></div>
-  <div class="list" id="list"></div>
+  <div class="list" id="list"><div class="skrow sk"></div><div class="skrow sk"></div><div class="skrow sk"></div><div class="skrow sk"></div><div class="skrow sk"></div><div class="skrow sk"></div><div class="skrow sk"></div><div class="skrow sk"></div></div>
 
   <div class="disc">
     Données : Bulletins Officiels de la Cote de la BRVM. Le score est un indicateur d'information
@@ -154,7 +170,7 @@
 
 <script>
 let DATA = {};
-function init(){renderIdx();renderChips();renderList();}
+function init(){renderIdx();renderChips();renderList();if(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches){const _s=document.getElementById('search');if(_s)_s.focus();}}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const fmt=n=>n==null?"—":Math.round(n).toLocaleString('fr-FR');
 const f2=n=>n==null?"—":n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -213,6 +229,8 @@ function renderIdx(){
 let favOnly=false;
 let FAV=new Set((()=>{try{return JSON.parse(localStorage.getItem('zieclair_fav')||'[]')}catch(e){return[]}})());
 function toggleFav(sym){FAV.has(sym)?FAV.delete(sym):FAV.add(sym);localStorage.setItem('zieclair_fav',JSON.stringify([...FAV]));renderChips();renderList();}
+// Retour accueil (clic sur le logo) — supprime les clics morts repérés par Clarity
+function goHome(){const d=document.getElementById('detail');if(d)d.classList.remove('open');const s=document.getElementById('search');if(s)s.value='';fsec='';favOnly=false;renderChips();renderList();window.scrollTo({top:0,behavior:'smooth'});}
 // Chips
 let fsec="";
 function renderChips(){
@@ -240,6 +258,7 @@ function renderList(){
         <span class="badge ${sc.cls}">${sc.label}</span>
       </div>
       <div class="favbtn ${FAV.has(r.symbol)?'on':''}" data-fav="${r.symbol}">${FAV.has(r.symbol)?'★':'☆'}</div>
+      <div class="chev">›</div>
       </div>`;}).join('');
   document.querySelectorAll('#list .row').forEach(el=>el.onclick=()=>openDetail(el.dataset.sym));
   document.querySelectorAll('#list .favbtn').forEach(el=>el.onclick=(e)=>{e.stopPropagation();toggleFav(el.dataset.fav);});
@@ -293,7 +312,7 @@ function openDetail(sym){
   D.classList.add('open');
   document.getElementById('back').onclick=()=>D.classList.remove('open');
   document.querySelectorAll('#range button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#range button').forEach(x=>x.classList.remove('on'));b.classList.add('on');curRange=b.dataset.r;drawChart(sym);});
-  curRange='Max';drawChart(sym);
+  curRange='Max';requestAnimationFrame(()=>drawChart(sym));
 }
 function drawChart(sym){
   let h=history(sym);const now=h.length?new Date(h[h.length-1].date):new Date();
