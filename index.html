@@ -176,6 +176,9 @@ const fmt=n=>n==null?"—":Math.round(n).toLocaleString('fr-FR');
 const f2=n=>n==null?"—":n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const cls=v=>v>0?'up':v<0?'down':'flat';
 const sgn=v=>v==null?"—":(v>0?'+':'')+f2(v)+' %';
+// Dates au format français JJ/MM/AAAA (les données sont stockées en ISO AAAA-MM-JJ)
+const fdate=s=>{if(!s)return"—";const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s;};
+const fdateShort=s=>{const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]:s;};
 const dates=()=>Object.keys(DATA).sort();
 const latest=()=>{const d=dates();return d[d.length-1];};
 const quotes=()=>DATA[latest()].quotes;
@@ -295,7 +298,7 @@ function openDetail(sym){
    <div class="block">
      <h3>Dividende</h3>
      <div class="dline"><span>Dernier dividende net</span><b>${q.div_amount_net==null?'—':fmt(q.div_amount_net)+' F'}</b></div>
-     <div class="dline"><span>Date de détachement</span><b>${q.div_date||'—'}</b></div>
+     <div class="dline"><span>Date de détachement</span><b>${fdate(q.div_date)}</b></div>
      <div class="dline"><span>Rendement net</span><b>${q.yield_net_pct==null?'—':f2(q.yield_net_pct)+' %'}</b></div>
    </div>
 
@@ -326,8 +329,8 @@ function drawChart(sym){
     options:{interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
       plugins:{legend:{display:false},
         tooltip:{enabled:true,backgroundColor:'#1c2530',borderColor:'#F2811D',borderWidth:1,titleColor:'#8593a1',bodyColor:'#eef3f8',bodyFont:{weight:'bold',size:14},padding:10,displayColors:false,caretPadding:8,
-          callbacks:{title:it=>it[0].label,label:it=>it.parsed.y.toLocaleString('fr-FR')+' FCFA'}}},
-      scales:{x:{grid:{color:'#26313d'},ticks:{color:'#8593a1',maxTicksLimit:6,font:{size:9}}},y:{grid:{color:'#26313d'},ticks:{color:'#8593a1',font:{size:10},callback:v=>v.toLocaleString('fr-FR')}}}},
+          callbacks:{title:it=>fdate(it[0].label),label:it=>it.parsed.y.toLocaleString('fr-FR')+' FCFA'}}},
+      scales:{x:{grid:{color:'#26313d'},ticks:{color:'#8593a1',maxTicksLimit:6,font:{size:9},callback:function(v){return fdateShort(this.getLabelForValue(v));}}},y:{grid:{color:'#26313d'},ticks:{color:'#8593a1',font:{size:10},callback:v=>v.toLocaleString('fr-FR')}}}},
     plugins:[crosshair]});
 }
 document.getElementById('search').oninput=renderList;
