@@ -92,6 +92,11 @@
   .scbadge.buy{background:rgba(37,194,129,.16);color:var(--up);border:1px solid var(--up)}
   .scbadge.hold{background:rgba(242,129,29,.16);color:var(--accent);border:1px solid var(--accent)}
   .scbadge.sell{background:rgba(240,85,92,.16);color:var(--down);border:1px solid var(--down)}
+  .gaugewrap{text-align:center;margin:4px 0 12px}
+  .gaugelabel{font-weight:800;font-size:19px;letter-spacing:.5px;margin-top:-4px}
+  .gaugelabel.buy{color:var(--up)}
+  .gaugelabel.hold{color:var(--accent)}
+  .gaugelabel.sell{color:var(--down)}
   .scnum{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
   .scnum small{font-size:13px;color:var(--muted)}
   .sub-s{margin-top:4px}
@@ -172,6 +177,16 @@ function score(q){
   const t=ws?Math.round(ss/ws):null;
   return {t,label:t==null?'—':t>=65?'ACHAT':t>=45?'GARDE':'VENTE',cls:t==null?'hold':t>=65?'buy':t>=45?'hold':'sell',parts};
 }
+// Jauge "vitesse" — 5 zones alignées sur les seuils du score, aiguille, sans chiffre.
+function gaugeSVG(t){
+  const cx=120,cy=122,R=92,sw=22;
+  const Z=[[0,30,'#b03a2e'],[30,45,'#e05a4b'],[45,65,'#e6b23a'],[65,80,'#5cbf57'],[80,100,'#1e8f4e']];
+  const pt=(s,r)=>{const a=Math.PI*(1-clamp(s,0,100)/100);return [cx+r*Math.cos(a),cy-r*Math.sin(a)];};
+  const arcs=Z.map(z=>{const p1=pt(z[0],R),p2=pt(z[1],R);return `<path d="M ${p1[0].toFixed(1)} ${p1[1].toFixed(1)} A ${R} ${R} 0 0 1 ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}" fill="none" stroke="${z[2]}" stroke-width="${sw}"/>`;}).join('');
+  const val=t==null?50:clamp(t,0,100), n=pt(val,R-14);
+  const needle=`<line x1="${cx}" y1="${cy}" x2="${n[0].toFixed(1)}" y2="${n[1].toFixed(1)}" stroke="#cdd6df" stroke-width="4" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="7" fill="#0b0f14" stroke="#cdd6df" stroke-width="3"/>`;
+  return `<svg viewBox="0 0 240 138" width="100%" style="max-width:260px;display:block;margin:0 auto" role="img" aria-label="Jauge du score Ziéclair">${arcs}${needle}</svg>`;
+}
 function sparkline(h){
   if(h.length<2)return '';
   const cs=h.map(x=>x.close),mn=Math.min(...cs),mx=Math.max(...cs),w=48,hh=16;
@@ -222,7 +237,7 @@ function renderList(){
       <div class="rt">
         <div class="px">${fmt(r.close)}</div>
         <div class="chg ${cls(r.var_day_pct)}">${sgn(r.var_day_pct)}</div>
-        <span class="badge ${sc.cls}">${sc.label==='—'?'—':sc.label+' '+sc.t}</span>
+        <span class="badge ${sc.cls}">${sc.label}</span>
       </div>
       <div class="favbtn ${FAV.has(r.symbol)?'on':''}" data-fav="${r.symbol}">${FAV.has(r.symbol)?'★':'☆'}</div>
       </div>`;}).join('');
@@ -251,9 +266,9 @@ function openDetail(sym){
 
    <div class="block">
      <h3>Score</h3>
-     <div class="scoretop">
-       <span class="scbadge ${sc.cls}">${sc.label}</span>
-       <span class="scnum" style="color:${sc.cls==='buy'?'var(--up)':sc.cls==='sell'?'var(--down)':'var(--accent)'}">${sc.t==null?'—':sc.t}<small>/100</small></span>
+     <div class="gaugewrap">
+       ${gaugeSVG(sc.t)}
+       <div class="gaugelabel ${sc.cls}">${sc.label}</div>
      </div>
      <div class="sub-s">${sc.parts.map(p=>`<div class="r"><span>${p[0]}</span><span>${Math.round(p[1])}/100</span></div><div class="bar"><i style="width:${p[1]}%"></i></div>`).join('')}</div>
    </div>
