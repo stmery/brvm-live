@@ -271,8 +271,13 @@ function renderList(){
 }
 
 // Detail
-let chart=null,curRange='Max';
+let chart=null,curRange='Max',curSym=null,HIST=null,histPromise=null;
+// Historique profond chargé à la demande (fichier séparé, mis en cache) — n'alourdit pas l'accueil
+function ensureHistory(){if(HIST)return Promise.resolve(HIST);if(histPromise)return histPromise;histPromise=fetch('history.json',{cache:'force-cache'}).then(r=>r.json()).then(h=>{HIST=h;return h;}).catch(()=>{HIST={};return HIST;});return histPromise;}
+// Série du graphe : historique profond (cours) + séances récentes de DATA (champs complets), dédupliquées
+function chartSeries(sym){const rec=history(sym);const seen=new Set(rec.map(x=>x.date));let old=[];if(HIST&&HIST[sym])old=HIST[sym].filter(p=>!seen.has(p[0])).map(p=>({date:p[0],close:p[1]}));return old.concat(rec).sort((a,b)=>a.date<b.date?-1:1);}
 function openDetail(sym){
+  curSym=sym;
   const h=history(sym),q=h[h.length-1],sc=score(q);
   const D=document.getElementById('detail');
   D.innerHTML=`
@@ -312,7 +317,7 @@ function openDetail(sym){
        <div class="kpi"><div class="k">PER</div><div class="v">${q.per==null?'—':f2(q.per)}</div></div>
        <div class="kpi"><div class="k">Volume (jour)</div><div class="v">${fmt(q.volume)}</div></div>
        <div class="kpi"><div class="k">Valeur transigée</div><div class="v">${fmt(q.value_fcfa)} F</div></div>
-       <div class="kpi"><div class="k">Séances suivies</div><div class="v">${h.length}</div></div>
+       <div class="kpi"><div class="k">Séances suivies</div><div class="v" id="seances">${h.length}</div></div>
      </div>
    </div>
    <div class="disc">Indicateur d'information à règles transparentes. Ne constitue pas un conseil en investissement personnalisé.</div>`;
@@ -320,9 +325,11 @@ function openDetail(sym){
   document.getElementById('back').onclick=()=>D.classList.remove('open');
   document.querySelectorAll('#range button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#range button').forEach(x=>x.classList.remove('on'));b.classList.add('on');curRange=b.dataset.r;drawChart(sym);});
   curRange='Max';requestAnimationFrame(()=>drawChart(sym));
+  ensureHistory().then(()=>{if(curSym===sym)drawChart(sym);});
 }
 function drawChart(sym){
-  let h=history(sym);const now=h.length?new Date(h[h.length-1].date):new Date();
+  let h=chartSeries(sym);const se=document.getElementById('seances');if(se)se.textContent=h.length;
+  const now=h.length?new Date(h[h.length-1].date):new Date();
   const cut={'1M':30,'3M':90,'6M':180,'1A':365,'Max':1e9}[curRange];
   h=h.filter(x=>(now-new Date(x.date))/864e5<=cut);
   document.getElementById('cnote').textContent=h.length<2?"Historique en construction — une seule séance sur cette période.":`${h.length} séances · glissez le doigt sur la courbe pour voir les valeurs`;
