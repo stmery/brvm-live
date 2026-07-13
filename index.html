@@ -79,8 +79,8 @@
   .dpx .big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
   .dpx .sub{font-size:13.5px;margin-top:2px}
   .dpx .sub b{font-variant-numeric:tabular-nums}
-  .range{display:flex;gap:7px;padding:10px 20px 4px}
-  .range button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px 0;font-size:12px;cursor:pointer;font-family:var(--font)}
+  .range{display:flex;gap:5px;padding:10px 14px 4px}
+  .range button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:7px 0;font-size:11px;cursor:pointer;font-family:var(--font)}
   .range button.on{background:rgba(242,129,29,.16);color:var(--accent);border-color:var(--accent)}
   .chartwrap{padding:8px 14px 4px}
   .note{color:var(--muted);font-size:11px;padding:0 20px 6px}
@@ -179,7 +179,7 @@ const cls=v=>v>0?'up':v<0?'down':'flat';
 const sgn=v=>v==null?"—":(v>0?'+':'')+f2(v)+' %';
 // Dates au format français JJ/MM/AAAA (les données sont stockées en ISO AAAA-MM-JJ)
 const fdate=s=>{if(!s)return"—";const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s;};
-const fdateShort=s=>{const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]:s;};
+const fdateShort=s=>{const p=String(s).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):s;};
 // Mention quand le dernier détachement date de plus de 18 mois (pas de dividende récent)
 function divStale(dd){if(!dd)return"";const a=new Date(dd),b=new Date(latest());if(isNaN(a)||isNaN(b))return"";const months=(b-a)/2629800000;return months>18?`<div class="divnote">Aucun dividende détaché depuis ${a.getFullYear()}.</div>`:"";}
 const dates=()=>Object.keys(DATA).sort();
@@ -290,7 +290,7 @@ function openDetail(sym){
      <div class="sub"><b class="${cls(q.var_day_pct)}">${sgn(q.var_day_pct)}</b> aujourd'hui ·
        <b class="${cls(q.var_ytd_pct)}">${sgn(q.var_ytd_pct)}</b> sur l'année</div>
    </div>
-   <div class="range" id="range">${['1M','3M','6M','1A','Max'].map(r=>`<button data-r="${r}" class="${r==='Max'?'on':''}">${r}</button>`).join('')}</div>
+   <div class="range" id="range">${['1S','1M','3M','6M','YTD','1A','Max'].map(r=>`<button data-r="${r}" class="${r==='Max'?'on':''}">${r}</button>`).join('')}</div>
    <div class="chartwrap"><canvas id="chart" height="200"></canvas></div>
    <div class="note" id="cnote"></div>
 
@@ -329,9 +329,9 @@ function openDetail(sym){
 }
 function drawChart(sym){
   let h=chartSeries(sym);const se=document.getElementById('seances');if(se)se.textContent=h.length;
-  const now=h.length?new Date(h[h.length-1].date):new Date();
-  const cut={'1M':30,'3M':90,'6M':180,'1A':365,'Max':1e9}[curRange];
-  h=h.filter(x=>(now-new Date(x.date))/864e5<=cut);
+  const last=h.length?h[h.length-1].date:null;
+  if(curRange==='YTD'&&last){const y=last.slice(0,4);h=h.filter(x=>x.date>=y+'-01-01');}
+  else{const cut={'1S':7,'1M':30,'3M':90,'6M':180,'1A':365,'Max':1e9}[curRange];const now=new Date(last||Date.now());h=h.filter(x=>(now-new Date(x.date))/864e5<=cut);}
   document.getElementById('cnote').textContent=h.length<2?"Historique en construction — une seule séance sur cette période.":`${h.length} séances · glissez le doigt sur la courbe pour voir les valeurs`;
   if(chart)chart.destroy();
   const crosshair={id:'ch',afterDraw(c){const a=c.tooltip&&c.tooltip._active;if(a&&a.length){const x=a[0].element.x,ar=c.chartArea,ctx=c.ctx;ctx.save();ctx.beginPath();ctx.moveTo(x,ar.top);ctx.lineTo(x,ar.bottom);ctx.lineWidth=1;ctx.strokeStyle='rgba(242,129,29,.55)';ctx.stroke();ctx.restore();}}};
