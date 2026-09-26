@@ -232,27 +232,35 @@ function renderIdx(){
   }).join('');
 }
 // Favoris (mémorisés dans le navigateur)
-let favOnly=false;
 let FAV=new Set((()=>{try{return JSON.parse(localStorage.getItem('zieclair_fav')||'[]')}catch(e){return[]}})());
 function toggleFav(sym){FAV.has(sym)?FAV.delete(sym):FAV.add(sym);localStorage.setItem('zieclair_fav',JSON.stringify([...FAV]));renderChips();renderList();}
 // Retour accueil (clic sur le logo) — supprime les clics morts repérés par Clarity
-function goHome(){const d=document.getElementById('detail');if(d)d.classList.remove('open');const s=document.getElementById('search');if(s)s.value='';fsec='';favOnly=false;renderChips();renderList();window.scrollTo({top:0,behavior:'smooth'});}
+function goHome(){const d=document.getElementById('detail');if(d)d.classList.remove('open');const s=document.getElementById('search');if(s)s.value='';fsec='';renderChips();renderList();window.scrollTo({top:0,behavior:'smooth'});}
 // Chips
 let fsec="";
 function renderChips(){
   const secs=[...new Set(quotes().map(q=>q.sector).filter(Boolean))].sort();
-  const all=[["","Tous"],...secs.map(s=>[s,s])];
-  const favChip=`<div class="chip ${favOnly?'on':''}" data-fav="1">★ Favoris${FAV.size?' ('+FAV.size+')':''}</div>`;
-  document.getElementById('chips').innerHTML=favChip+all.map(([v,l])=>`<div class="chip ${v===fsec?'on':''}" data-s="${v}">${l}</div>`).join('');
-  document.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{if(c.dataset.fav){favOnly=!favOnly;}else{fsec=c.dataset.s;}renderChips();renderList();});
+  const favLabel="★ Favoris"+(FAV.size?' ('+FAV.size+')':'');
+  const chips=[["__fav__",favLabel],["","Tous"],["__down__","Baisses"],["__up__","Hausses"],...secs.map(s=>[s,s])];
+  document.getElementById('chips').innerHTML=chips.map(([v,l])=>`<div class="chip ${v===fsec?'on':''}" data-s="${v}">${l}</div>`).join('');
+  document.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{fsec=c.dataset.s;renderChips();renderList();});
 }
 // List
 function renderList(){
   const q=document.getElementById('search').value.toLowerCase();
-  let rows=quotes().filter(r=>(r.symbol.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q))&&(!fsec||r.sector===fsec)&&(!favOnly||FAV.has(r.symbol)));
-  rows.sort((a,b)=>(b.value_fcfa||0)-(a.value_fcfa||0));
+  let rows=quotes().filter(r=>{
+    if(!(r.symbol.toLowerCase().includes(q)||(r.name||'').toLowerCase().includes(q)))return false;
+    if(fsec==="")return true;
+    if(fsec==="__fav__")return FAV.has(r.symbol);
+    if(fsec==="__up__")return (r.var_day_pct||0)>0;
+    if(fsec==="__down__")return (r.var_day_pct||0)<0;
+    return r.sector===fsec;
+  });
+  if(fsec==="__up__")rows.sort((a,b)=>(b.var_day_pct||0)-(a.var_day_pct||0));
+  else if(fsec==="__down__")rows.sort((a,b)=>(a.var_day_pct||0)-(b.var_day_pct||0));
+  else rows.sort((a,b)=>(b.value_fcfa||0)-(a.value_fcfa||0));
   document.getElementById('marketMeta').textContent=rows.length+' valeurs';
-  if(favOnly && !rows.length){document.getElementById('list').innerHTML='<div class="disc" style="padding:34px 20px">Aucun favori pour l\'instant.<br>Appuie sur ☆ sur une valeur pour l\'ajouter.</div>';return;}
+  if(!rows.length){const msg=fsec==="__fav__"?'Aucun favori pour l\'instant.<br>Appuie sur ☆ sur une valeur pour l\'ajouter.':fsec==="__up__"?'Aucune valeur en hausse aujourd\'hui.':fsec==="__down__"?'Aucune valeur en baisse aujourd\'hui.':'Aucune valeur.';document.getElementById('list').innerHTML='<div class="disc" style="padding:34px 20px">'+msg+'</div>';return;}
   document.getElementById('list').innerHTML=rows.map(r=>{
     const sc=score(r);
     return `<div class="row" data-sym="${r.symbol}">
